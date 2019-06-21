@@ -1,0 +1,220 @@
+---
+title: "Students’ mother tongue influence on Russian language learning"
+author: "Natalia Isupova"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+```
+
+## Introduction
+
+Russian language is known as one of the most challenging languages to learn. However, for people whose mother tongue belongs to Slavic group of languages it is often not a difficult one to acquire. This is quite evident that mother tongue and other acquired foreign languages can significantly affect how fast new foreign language is learnt. This research is aimed to examine whether language branch of student’s mother tongue has an influence on Russian language learning.
+
+## Research hypotheses
+
+In this research we propose the following null hypothesis: the language branch of student’s mother tongue does not affect the speed of progress of Russian language learning. Alternative hypothesis is the following: the language branch of student’s mother tongue affects the speed of progress of Russian language learning.
+
+## Data
+
+To test this hypothesis, we conducted a survey among 68 Russian language learners. They were presented with 4 reading texts in Russian language, belonging to different language levels: A2 (Pre_Intermediate), B1 (Intermediate), B2 (Upper-Intermediate) and C1 (Advanced) according to CEFR. Each text was followed with 3 multiple choice questions about the text content. These questions are used to examine the level Russian language knowledge. Before the texts some meta information about students was collected:
+• What is their mother tongue?
+• What other foreign languages do they speak?
+• How long have they been learning Russian?
+
+The full survey form can be found here: https://raw.githubusercontent.com/NatalieIsupova/dataanalysis_project/master/Isupova_Survey.html
+
+
+```{r}
+df <- read.csv2(
+  "https://raw.githubusercontent.com/NatalieIsupova/dataanalysis_project/master/data.csv")
+glimpse(df)
+```
+## Variables
+
+The variables which are used in the analysis are the following:
+**native_lang** -- student's mother tongue;  
+**native_lang_branch** -- mother tongue's branch;  
+**native_lang_family** -- mother tongue's family;  
+**studying_time_years** -- years of studying Russian language;  
+**studying_time_period** -- years of studying Russian language turned into 4 periods manually; 
+**level** -- level of Russian language which was defined through this survey (pre-intermediate, intermediate, upper-intermediate, advanced);  
+**level_numeric** -- level of Russian language written with numbers (for correlation and regression); 
+ 
+## Descriptive statistics and visualization
+
+Firstly, we will count mean and median time of studying for each level.
+```{r}
+df %>% 
+  group_by(level) %>%
+  summarise(mean_time=mean(studying_time_years), 
+            median_time=median(studying_time_years))
+```
+```{r}
+ggplot(df, aes(x=level, y=studying_time_years, color=level)) + 
+  geom_boxplot()+
+  labs(title="Plot of studying time per level",
+       x="Level of Russian language", 
+       y = "Studying time (years)")
+```
+Then we will look at the branches and families presented in the survey data.
+```{r}
+df %>% group_by(native_lang_branch) %>% count(native_lang_branch) -> branches
+
+ggplot(branches, aes(x=native_lang_branch, y=n, fill=native_lang_branch)) + 
+  geom_bar(stat="identity")+
+  coord_flip()+
+  labs(title="Plot of branches in the survey",
+       x="Number of answers", 
+       y="Mother tongue branches")
+```
+
+```{r}
+df %>% group_by(native_lang_family) %>% count(native_lang_family) -> families
+
+ggplot(families, aes(x=native_lang_family, y=n, fill=native_lang_family)) + 
+  geom_bar(stat="identity")+
+  coord_flip()+
+  labs(title="Plot of language families in the survey",
+       x="Number of answers", 
+       y="Mother tongue families")
+```
+
+After that let's see which branches and families are predominant at each level.
+
+```{r}
+df %>% group_by(level, native_lang_branch) %>% count(native_lang_branch) -> level_branches
+
+ggplot(level_branches, aes(x=level, y=n, fill=native_lang_branch)) + 
+  geom_bar(stat="identity", color="black")+
+  labs(title="Plot of mother tongue branches in each level",
+       x="Level of Russian language", 
+       y="Mother tongue branches")
+```
+```{r}
+df %>% group_by(level, native_lang_family) %>% count(native_lang_family) -> level_families
+
+ggplot(level_families, aes(x=level, y=n, fill=native_lang_family)) + 
+  geom_bar(stat="identity", color="black")+
+  labs(title="Plot of mother tongue families in each level",
+       x="Level of Russian language",
+       y="Mother tongue families")
+```
+
+Let's look whether monther tongue branches correspond to level and time of studying.
+
+```{r}
+ggplot(df, aes(x = native_lang_branch, y = studying_time_years, color = level))+ 
+  geom_point()+
+  coord_flip()+
+  labs(title="Plot of mother tongue branches and time of studying Russian per level",
+       y="Years of studying Russian", 
+       x="Mother tongue branches")
+```
+
+On this plot we cannot see a good correlation between specific branches, time of studying and level of Russian language. Let's replace the quantitative variable "studying_time_years" with qualitative variable "studying_time_period" with 4 values: "equal to or less than 1 year", "from 1 to 2 years", "more than 2 to 5 years", "equal to or more than 5 years". 
+
+```{r}
+ggplot(df, aes(x = level, y = native_lang_branch, color = studying_time_period))+ 
+  geom_point()+
+  labs(title="Plot of mother tongue branches and level of Russian per time",
+       y="Mother tongue branches", 
+       x="Level of Russian")
+```
+
+
+## Testing hypotheses
+
+The null hypothesis is that the language branch of student’s mother tongue does not affect the speed of progress of Russian language learning. 
+
+Let's filter the data according to the level of Russian language.
+
+```{r}
+pre <- df %>% filter(level=="pre-intermediate")
+int <- df %>% filter(level=="intermediate")
+upp <- df %>% filter(level=="upper-intermediate")
+adv <- df %>% filter(level=="advanced")
+```
+
+To test our hypothesis we will use ANOVA. We conduct it on each of 4 filtered datasets.
+```{r}
+res_pre <- aov(pre$studying_time_years ~ pre$native_lang_branch)
+summary(res_pre)
+```
+```{r}
+res_int <- aov(int$studying_time_years ~ int$native_lang_branch)
+summary(res_int)
+```
+```{r}
+res_upp <- aov(upp$studying_time_years ~ upp$native_lang_branch)
+summary(res_upp)
+```
+```{r}
+res_adv <- aov(adv$studying_time_years ~ adv$native_lang_branch)
+summary(res_adv)
+```
+
+Only for dataset for pre-intermediate level we can reject our null hypothesis (p-value is less than 0.05). It means that mother tongue branch of a student affects speed of Russian language learning. For intermediate, upper-intermediate and advanced level we cannot reject the null hypothesis - mother tongue branch does not affect the speed of learning.
+
+
+Let's take 2 of the biggest branches - Germanic and Romance - and find out possible correlation between level and time of studying. We will filter our dataset on branch variable and conduct Spearman correlation test. We will use Spearman to avoid absolute values of years of studying, and we will use rank instead.
+
+```{r}
+ger <- df %>% filter(native_lang_branch=="Germanic")
+rom <- df %>% filter(native_lang_branch=="Romance")
+```
+
+```{r}
+cor.test(ger$studying_time_years, ger$level_numeric, method = 'spearman')
+```
+
+```{r}
+cor.test(rom$studying_time_years, rom$level_numeric, method = 'spearman')
+```
+
+We can see that there is a positive correlation in the branch of Germanic languages (p-value is less than 0.05). Romance branch doesn't show correlation between time of studying and level of Russian (p-value is more than 0.05).
+
+Now we are interested in the following thing: how does level of Russian language change (on average) if time of studying increases by one point? To answer this question we have to build a linear regression model. We will work only with subset for Germanic languages.
+
+```{r}
+model1 <- lm(data = ger, level_numeric ~ studying_time_years)
+summary(model1)
+```
+
+A regression equation will look like this: 2.81 + 0.04*studying_time_years
+
+```{r}
+ggplot(data = ger, aes(x = studying_time_years, y = level_numeric)) + 
+  geom_point() +
+  labs(x = "Year of studying",
+       y = "Level of Russian language",
+       title = "Correlation between year of studying and level of Russian 
+       (for students with Germanic mother tongue)") +
+  geom_smooth(method=lm)
+```
+
+We can see that the regression line is not quite significant in this plot because of 2 outliers (20 years of studying Russian language). If we drop them out, we can get a better picture.
+
+```{r}
+ger_2 <- df %>% filter(native_lang_branch=="Germanic", studying_time_years < 20)
+
+ggplot(data = ger_2, aes(x = studying_time_years, y = level_numeric)) + 
+  geom_point() +
+  labs(x = "Year of studying",
+       y = "Level of Russian language",
+       title = "Correlation between year of studying and level of Russian 
+       (for students with Germanic mother tongue)") +
+  geom_smooth(method=lm)
+```
+
+## Conclusion 
+
+We have examined branches of students' mother tongue and tested the hypothesis whether it influence speed of Russian language learning or not. The results of the ANOVA tests conducted are the following: the language branch of student’s mother tongue does not affect the speed of progress of Russian language learning when student has reached intermediate or higher level. We did not reject the null hypothesis on pre-intermediate level, it means that the mother tongue does affect the speed of learning on a low level of Russian language proficiency. Also we have examined possible correlations of year of studying and level reached in 2 biggest branched - Romance and Germanic. We have found a positive correlation for Germanic languages using Spearman correlation test and performed regression analysis. 
+
+The limitation of this research is the fact that more observations are needed for more detailed and accurate analysis. Two variables of the branches of foreign languages can also be added in a bigger research to get more sophisticated results.
+
+## Sources
+Code and data on Github: https://github.com/NatalieIsupova/dataanalysis_project
